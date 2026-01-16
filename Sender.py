@@ -1,6 +1,12 @@
 import socket
 import time
+import os
+import csv
 from utils import LISTEN_IP, LISTEN_PORT, DELIMITER, Packet
+
+# Ensure results directory exists
+os.makedirs("results", exist_ok=True)
+LOG_FILE = "results/experiment_log.csv"
 
 
 class EnergyProtocolSender:
@@ -11,8 +17,12 @@ class EnergyProtocolSender:
         self.current_battery = 100.0
         self.buffer = []
 
+        # Initialize CSV Header
+        with open(LOG_FILE, mode='w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Timestamp", "Seq", "Battery", "Bytes_Sent", "Items_In_Packet", "Mode"])
+
     def get_strategy(self):
-        """Returns (Threshold, Description) based on battery."""
         if self.current_battery > 70:
             return 1, "REAL-TIME"
         elif self.current_battery > 30:
@@ -25,27 +35,28 @@ class EnergyProtocolSender:
         threshold, mode = self.get_strategy()
 
         if len(self.buffer) >= threshold:
-            self.flush()
+            self.flush(mode)
         else:
-            print(f"[TX Hold] Buffering... ({len(self.buffer)}/{threshold}) [{mode}]")
+            print(f"[TX Hold] Buffering... ({len(self.buffer)}/{threshold})")
 
-    def flush(self):
+    def flush(self, mode):
         if not self.buffer: return
 
-        # Prepare Payload
         payload_str = DELIMITER.join(self.buffer)
-
-        # Prepare Header Info
         is_aggregated = 1 if len(self.buffer) > 1 else 0
-        budget_byte = int(self.current_battery)  # Simplified for demo
+        budget_byte = int(self.current_battery)
 
-        # Pack and Send
         packet = Packet.pack(self.seq, is_aggregated, budget_byte, payload_str)
         self.sock.sendto(packet, self.target)
 
-        print(f"--> [TX SENT] Seq:{self.seq} | Size:{len(packet)}B | Bat:{self.current_battery:.1f}%")
+        # --- LOGGING DATA ---
+        with open(LOG_FILE, mode='a', newline='') as f:
+            writer = csv.writer(f)
+            # Log: Time, Seq, Battery, Total Size, Aggregation Count, Mode Name
+            writer.writerow([time.time(), self.seq, self.current_battery, len(packet), len(self.buffer), mode])
 
-        # Reset State & Simulate Battery Drain
+        print(f"--> [TX SENT] Seq:{self.seq} | Size:{len(packet)}B | Mode:{mode}")
+
         self.seq += 1
         self.buffer = []
-        self.current_battery -= 2.5  # Cost of turning on radio
+        self.current_battery -= 2.0
