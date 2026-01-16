@@ -1,46 +1,48 @@
-import socket
-import struct
-import time
 import threading
-import random
+import time
 
-from EnergyProtocolReceiver import EnergyProtocolReceiver
-from EnergyProtocolSender import EnergyProtocolSender
+from Receiver import EnergyProtocolReceiver
+from Sender import EnergyProtocolSender
 
-# --- CONFIGURATIE ---
-LISTEN_IP = "127.0.0.1"
-LISTEN_PORT = 5005
-TARGET_IP = "127.0.0.1"
-TARGET_PORT = 5005
 
-# Header formaat: !I B B (Big-endian, Unsigned Int (Seq), U-Char (Flags), U-Char (Budget))
-# Totale header grootte: 4 + 1 + 1 = 6 bytes overhead
-HEADER_FORMAT = "!I B B"
-
-def run_demo():
-    # Start de receiver in een aparte thread zodat we in dezelfde terminal kunnen zenden
-    receiver = EnergyProtocolReceiver()
-    rx_thread = threading.Thread(target=receiver.start)
+def run_simulation():
+    # 1. Start Receiver in Background
+    rx = EnergyProtocolReceiver()
+    rx_thread = threading.Thread(target=rx.start)
     rx_thread.daemon = True
     rx_thread.start()
 
-    time.sleep(1)  # Even wachten tot receiver klaar is
+    time.sleep(1)  # Wait for server start
 
-    # Start de sender
-    sender = EnergyProtocolSender(TARGET_IP, TARGET_PORT)
+    # 2. Start Sender
+    tx = EnergyProtocolSender()
 
-    # Simuleer een reeks sensorwaarden
-    print("\n--- START EXPERIMENT ---\n")
-    for i in range(10):
-        # Simuleer data (bv. temperatuur)
-        dummy_data = f"Temp:{20 + i}C"
-        sender.send_reading(dummy_data)
+    print("\n=== EXPERIMENT START: 3 PHASES ===\n")
 
-        # Simuleer variabele interval (sleep)
-        time.sleep(0.5)
+    # PHASE 1: HIGH BATTERY (90%) -> Should send immediately
+    tx.current_battery = 90
+    for i in range(3):
+        tx.send_data(f"T:{20 + i}")
+        time.sleep(0.3)
 
-    print("\n--- EINDE DEMO ---")
+    print("\n--- DRAINING BATTERY TO 60% (Aggregation Mode) ---")
+
+    # PHASE 2: MEDIUM BATTERY (60%) -> Should buffer 5 items
+    tx.current_battery = 60
+    for i in range(7):
+        tx.send_data(f"T:{30 + i}")
+        time.sleep(0.1)
+
+    print("\n--- DRAINING BATTERY TO 15% (Survival Mode) ---")
+
+    # PHASE 3: CRITICAL BATTERY (15%) -> Should buffer 10 items
+    tx.current_battery = 15
+    for i in range(12):
+        tx.send_data(f"T:{40 + i}")
+        time.sleep(0.1)
+
+    print("\n=== EXPERIMENT COMPLETE ===")
 
 
 if __name__ == "__main__":
-    run_demo()
+    run_simulation()
