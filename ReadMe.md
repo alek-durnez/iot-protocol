@@ -1,5 +1,3 @@
-Here is the clean, professional version of the README.md file, stripped of all emojis and formatted for immediate use.
-
 ```markdown
 # Energy-Aware Transport Protocol (Research PoC)
 
