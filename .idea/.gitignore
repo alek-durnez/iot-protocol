@@ -1,0 +1,41 @@
+# --- User provided (JetBrains/IntelliJ) ---
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+.idea/
+
+# --- Python Basics (Cruciaal) ---
+# Gecompileerde python files (byte code)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+# Voorkomt dat je duizenden library files uploadt
+venv/
+.venv/
+env/
+.env
+
+# --- Research Output & Data (Specifiek voor jouw project) ---
+# We willen geen testresultaten in git, alleen de code
+*.csv
+*.log
+*.txt
+*.dat
+
+# Afbeeldingen gegenereerd door matplotlib/plots
+*.png
+*.jpg
+*.svg
+*.pdf
+
+# Mappen voor resultaten (als je die aanmaakt)
+results/
+data/
+output/
+
+# --- OS Junk files ---
+.DS_Store
+Thumbs.db
