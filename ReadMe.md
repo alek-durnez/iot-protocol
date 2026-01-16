@@ -10,7 +10,7 @@ Standard protocols like UDP and CoAP impose significant overhead ("Header Tax") 
 
 ## Research Goals
 1.  **Reduce Protocol Overhead:** Minimize the ratio of header bytes to payload bytes via packet aggregation.
-2.  **Optimize Radio Duty Cycle:** Reduce energy-expensive radio state transitions (Sleep <-> Wake) by buffering data.
+2.  **Optimize Radio Duty Cycle:** Reduce energy-expensive radio state transitions (Sleep to Wake) by buffering data.
 3.  **Extend Network Lifetime:** Introduce "Graceful Degradation" where nodes sacrifice latency for longevity when the battery is critical.
 
 ## Protocol Specification
@@ -33,15 +33,27 @@ Unlike standard TCP (20+ bytes), this header is stripped down to the bare minimu
 
 * **Sequence Number (4 bytes):** Used for ordering and detecting packet loss.
 * **Flags (1 byte):** Indicates compression status or aggregation type.
-* **Budget (1 byte):** A value from `0-255` representing the device's energy status (mapped from 0-100% battery). The receiver uses this to log network health.
+* **Budget (1 byte):** A value from `0-255` representing the device's energy status (mapped from 0-100% battery).
+* **Payload:** Contains one or multiple sensor readings separated by a delimiter.
+
+## Adaptive Aggregation Logic
+
+The core innovation of this protocol is the **Energy-Aware Aggregation Threshold**. The sender monitors its own battery state and adjusts the transmission strategy dynamically.
+
+| Battery Level | Operational Mode | Aggregation Threshold | Latency | Energy Efficiency |
+| --- | --- | --- | --- | --- |
+| **> 70%** | Real-Time | 1 item (Immediate) | Low | Low |
+| **30% - 70%** | Balanced | 5 items | Medium | Medium |
+| **< 30%** | Survival | 10 items | High | Maximum |
+
+*In "Survival Mode", the device deliberately sacrifices data freshness to minimize radio wake-up events, extending operational life.*
 
 ## Getting Started
 
 ### Prerequisites
 
 * Python 3.8+
-* Standard libraries only (`socket`, `struct`, `threading`) for the core protocol.
-* *(Optional)* `matplotlib` for plotting results.
+* Standard libraries only (`socket`, `struct`, `threading`).
 
 ### Installation
 
@@ -53,42 +65,29 @@ cd energy-proto-research
 
 ```
 
-### Running the Demo
+### Running the Simulation
 
-The main script runs both the Sender and Receiver locally for demonstration purposes.
+The project is modularized. Run the `main.py` entry point to start the Receiver and Sender threads automatically.
 
 ```bash
-python energy_proto.py
+python main.py
 
 ```
 
-You will see output indicating packet transmission, the mapped energy budget, and the receiver parsing the custom header.
-
-## Methodology & Metrics
-
-To evaluate the efficacy of this protocol, we compare it against a standard UDP baseline using the following metrics:
-
-1. **Goodput Ratio:** Payload Bytes / Total Bytes Transmitted
-2. **Energy Estimate (E_est):** Calculated using a simplified radio model:
-
-
-
-*Where aggregation reduces N_tx (transmission events).*
-3. **Packet Delivery Ratio (PDR):** Percentage of successfully received packets under simulated lossy conditions.
+The simulation will cycle through three phases (High, Medium, and Critical battery) to demonstrate the changing aggregation behavior in the console output.
 
 ## Project Structure
 
-```text
-.
-├── energy_proto.py    # Main PoC implementation (Sender & Receiver classes)
-├── results/           # CSV logs generated during experiments (ignored by git)
-├── README.md          # Project documentation
-└── .gitignore         # Git configuration
+* **main.py:** The experiment orchestrator. Starts the sender and receiver threads and simulates battery drain.
+* **sender.py:** Contains the `EnergyProtocolSender` class with the adaptive buffering logic.
+* **receiver.py:** Contains the `EnergyProtocolReceiver` class for parsing packets and logging metrics.
+* **utils.py:** Shared configuration, constants, and the `Packet` class for binary packing/unpacking.
+* **results/:** Directory for generated CSV logs (ignored by git).
 
-```
+## Methodology & Metrics
 
-## Future Work
+To evaluate the efficacy of this protocol, future experiments will compare it against a standard UDP baseline using:
 
-* Implement adaptive aggregation window (buffer time) based on the `Budget` byte.
-* Add a chaotic network simulator (packet loss/delay) to test robustness.
-* Compare results against CoAP/MQTT-SN.
+1. **Goodput Ratio:** Payload Bytes / Total Bytes Transmitted.
+2. **Energy Estimate:** Calculated based on the number of TX events saved via aggregation.
+3. **Packet Delivery Ratio:** Reliability under simulated network loss.
