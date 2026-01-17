@@ -1,6 +1,6 @@
 import socket
 import threading
-from utils import LISTEN_IP, LISTEN_PORT, DELIMITER, Packet
+from utils import LISTEN_IP, LISTEN_PORT, DELIMITER, Packet, FLAG_ACK, FLAG_AGGREGATED
 
 
 class EnergyProtocolReceiver:
@@ -21,20 +21,21 @@ class EnergyProtocolReceiver:
     def process_packet(self, data, addr):
         seq, flags, budget, payload = Packet.unpack(data)
 
-        if seq is None:
-            return  # Corrupt packet
+        if seq is None: return
 
+        # Is dit een ACK? (Zou niet moeten, want wij zijn de server, maar voor de zekerheid)
+        if flags & FLAG_ACK:
+            return
+
+        # 1. Verwerk de Data
         readings = payload.split(DELIMITER)
+        print(f"[RX] Seq:{seq} | Bat:{budget}% | Items:{len(readings)}")
 
-        # --- Visualization of Data Arriving ---
-        print(f"[RX] Seq:{seq} | Bat:{budget}% | Items:{len(readings)} | Src:{addr}")
-
-        if budget < 30:
-            print(f"    └──CRITICAL ENERGY MODE DETECTED")
-
-        for r in readings:
-            if r: print(f"        └── Data: {r}")
-
+        # 2. STUUR ACK TERUG
+        # We sturen een leeg pakketje terug met de FLAG_ACK aan en hetzelfde Seq nummer.
+        ack_packet = Packet.pack(seq, FLAG_ACK, budget, "")
+        self.sock.sendto(ack_packet, addr)
+        print(f"    -> Sent ACK for #{seq}") 
     def stop(self):
         self.running = False
         self.sock.close()
