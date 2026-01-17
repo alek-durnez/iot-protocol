@@ -1,4 +1,3 @@
-```markdown
 # Energy-Aware Transport Protocol (Research PoC)
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue) ![Status](https://img.shields.io/badge/Status-Research_Prototype-orange)
