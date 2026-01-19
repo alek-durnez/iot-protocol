@@ -78,7 +78,7 @@ pip install aiocoap matplotlib
 Clone the repository:
 
 ```bash
-git clone [https://gitlab.com/yourname/iot-protocol.git](https://gitlab.com/yourname/iot-protocol.git)
+git clone [https://gitlab.com/Alekdurnez/iot-protocol.git](https://gitlab.com/Alekdurnez/iot-protocol.git)
 cd iot-protocol
 
 ```
