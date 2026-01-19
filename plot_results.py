@@ -1,63 +1,68 @@
 import matplotlib.pyplot as plt
-import csv
-import sys
+import os
 
-LOG_FILE = "results/experiment_log.csv"
+# Ensure results directory exists
+os.makedirs("results", exist_ok=True)
+
+# --- CONFIGURATION ---
+# Enter the results from your main.py console output here
+# (Example values based on your recent 50-reading test)
+labels = ['Standard CoAP', 'Smart Protocol']
+
+# Metric 1: Packets Sent (Lower is better)
+packets = [50, 8]
+
+# Metric 2: Bytes Transferred (Lower is better)
+bytes_transferred = [1450, 401]
+
+# Metric 3: Energy Consumed (Lower is better)
+energy = [895.0, 160.1]
 
 
-def plot_experiment():
-    timestamps = []
-    battery_levels = []
-    tx_events = []
-    modes = []
+# --- PLOTTING ---
+def create_comparison_chart():
+    print("Generating Head-to-Head Comparison Graph...")
 
-    try:
-        with open(LOG_FILE, 'r') as f:
-            reader = csv.DictReader(f)
-            start_time = None
-            packet_count = 0
+    fig, axes = plt.subplots(1, 3, figsize=(16, 6))
 
-            for row in reader:
-                t = float(row["Timestamp"])
-                if start_time is None: start_time = t
+    # Colors: Red = Standard/Expensive, Green = Smart/Efficient
+    colors = ['#e74c3c', '#2ecc71']
 
-                timestamps.append(t - start_time)  # Relative time (0s start)
-                battery_levels.append(float(row["Battery"]))
-                modes.append(row["Mode"])
+    # Plot 1: Packet Count
+    axes[0].bar(labels, packets, color=colors, alpha=0.8)
+    axes[0].set_title('Total Packets Sent\n(Radio Wake-ups)', fontsize=12, fontweight='bold')
+    axes[0].set_ylabel('Count')
+    axes[0].grid(axis='y', linestyle='--', alpha=0.5)
+    for i, v in enumerate(packets):
+        axes[0].text(i, v + 1, str(v), ha='center', fontweight='bold', fontsize=11)
 
-                packet_count += 1
-                tx_events.append(packet_count)
+    # Plot 2: Bandwidth
+    axes[1].bar(labels, bytes_transferred, color=colors, alpha=0.8)
+    axes[1].set_title('Total Network Traffic\n(Bandwidth Usage)', fontsize=12, fontweight='bold')
+    axes[1].set_ylabel('Bytes')
+    axes[1].grid(axis='y', linestyle='--', alpha=0.5)
+    for i, v in enumerate(bytes_transferred):
+        axes[1].text(i, v + 50, f"{v} B", ha='center', fontweight='bold', fontsize=11)
 
-    except FileNotFoundError:
-        print("Error: Run 'main.py' first to generate data!")
-        sys.exit()
+    # Plot 3: Energy Efficiency
+    axes[2].bar(labels, energy, color=colors, alpha=0.8)
+    axes[2].set_title('Total Energy Consumed\n(Battery Impact)', fontsize=12, fontweight='bold')
+    axes[2].set_ylabel('Energy (mJ)')
+    axes[2].grid(axis='y', linestyle='--', alpha=0.5)
+    for i, v in enumerate(energy):
+        axes[2].text(i, v + 20, f"{v:.1f} mJ", ha='center', fontweight='bold', fontsize=11)
 
-    # --- THE VISUALIZATION ---
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    # Global Title
+    plt.suptitle('Benchmark Results: Standard CoAP vs. Smart Protocol\n(Scenario: 50 Sensor Readings, 20% Packet Loss)',
+                 fontsize=16)
 
-    # Plot 1: Battery Drain (Left Y-Axis)
-    color = 'tab:red'
-    ax1.set_xlabel('Time (seconds)')
-    ax1.set_ylabel('Battery Level (%)', color=color)
-    ax1.plot(timestamps, battery_levels, color=color, linewidth=2, label='Battery Life')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Make room for suptitle
 
-    # Plot 2: Transmission Events (Right Y-Axis)
-    ax2 = ax1.twinx()
-    color = 'tab:blue'
-    ax2.set_ylabel('Cumulative Transmissions (TX Events)', color=color)
-    ax2.step(timestamps, tx_events, where='post', color=color, linewidth=2, label='Packets Sent')
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    # Add Mode Annotations
-    plt.title('Impact of Adaptive Aggregation on Radio Activity')
-
-    # Show the graph
-    plt.tight_layout()
-    print("Generating plot...")
+    output_path = "results/comparison_graph.png"
+    plt.savefig(output_path, dpi=300)
+    print(f"Graph saved successfully to: {output_path}")
     plt.show()
 
 
 if __name__ == "__main__":
-    plot_experiment()
+    create_comparison_chart()
