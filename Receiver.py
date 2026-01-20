@@ -1,6 +1,6 @@
 import socket
 import struct
-from utils import LISTEN_IP, LISTEN_PORT, Packet, FLAG_ACK
+from utils import LISTEN_IP, LISTEN_PORT, Packet, FLAG_ACK, decrypt_payload
 
 
 class EnergyProtocolReceiver:
@@ -12,7 +12,7 @@ class EnergyProtocolReceiver:
         self.last_seq_received = -1
 
     def start(self):
-        print(f"[Receiver] Online at {LISTEN_IP}:{LISTEN_PORT}")
+        print(f"[Receiver] SECURE SERVER Online at {LISTEN_IP}:{LISTEN_PORT}")
         while self.running:
             try:
                 data, addr = self.sock.recvfrom(2048)
@@ -23,7 +23,7 @@ class EnergyProtocolReceiver:
                 print(f"[Receiver] Error: {e}")
 
     def process_packet(self, data, addr):
-        seq, flags, budget, payload_bytes = Packet.unpack(data)
+        seq, flags, budget, encrypted_payload = Packet.unpack(data)
         if seq is None: return
         if flags & FLAG_ACK: return
 
@@ -33,20 +33,26 @@ class EnergyProtocolReceiver:
 
         self.last_seq_received = seq
 
-        # --- BINARY UNPACKING ---
-        # Convert bytes back to list of integers
-        count = len(payload_bytes)
+        # Decryption and integrity check
+        decrypted_bytes = decrypt_payload(encrypted_payload)
+
+        if decrypted_bytes is None:
+            print(f"[SECURITY ALERT] Packet #{seq} from {addr} FAILED INTEGRITY CHECK. Dropping.")
+            return
+
+        # Binary unpacking
+        count = len(decrypted_bytes)
         if count > 0:
-            readings = struct.unpack(f"{count}B", payload_bytes)
+            readings = struct.unpack(f"{count}B", decrypted_bytes)
         else:
             readings = []
 
-        print(f"[RX] Seq:{seq} | Bat:{budget}% | Payload: {readings} ({count} bytes)")
+        print(f"[RX] Seq:{seq} | Bat:{budget}% | Decrypted: {readings} (Size: {len(data)}B)")
 
         self.send_ack(seq, budget, addr)
 
     def send_ack(self, seq, budget, addr):
-        # ACKs have empty payload
+        # ACKs are not encrypted in this PoC (common in lightweight protocols)
         ack_packet = Packet.pack(seq, FLAG_ACK, budget, b"")
         self.sock.sendto(ack_packet, addr)
 

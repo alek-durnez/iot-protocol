@@ -4,7 +4,7 @@ import os
 import csv
 import random
 import struct
-from utils import LISTEN_IP, LISTEN_PORT, Packet, FLAG_ACK, FLAG_AGGREGATED, simulate_network_loss
+from utils import LISTEN_IP, LISTEN_PORT, Packet, FLAG_ACK, FLAG_AGGREGATED, simulate_network_loss, encrypt_payload
 from battery import Battery
 
 LOG_FILE = "results/smart_sender_log.csv"
@@ -16,7 +16,7 @@ class SmartSender:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.target = (target_ip, target_port)
         self.seq = 0
-        self.buffer = []  # Now stores INTEGERS, not strings
+        self.buffer = []  # Stores Integers
 
         # PHYSICS ENGINE
         self.battery = Battery(initial_capacity=100.0, drain_idle=0.1, drain_tx=3.0)
@@ -35,9 +35,9 @@ class SmartSender:
             return 10, "SURVIVAL", 0
 
     def run(self):
-        print(f"=== SMART SENDER STARTED (Bat: {self.battery.current}%) ===")
+        print(f"=== SECURE SENDER STARTED (Bat: {self.battery.current}%) ===")
         while not self.battery.is_dead:
-            # 1. Simulate Sensor Reading (BINARY MODE: Just the int)
+            # 1. Simulate Sensor Reading (Binary)
             reading = random.randint(20, 30)
             self.buffer.append(reading)
 
@@ -57,17 +57,19 @@ class SmartSender:
     def flush(self, mode, max_retries):
         if not self.buffer: return
 
-        # --- BINARY PACKING ---
-        # Pack list of ints into bytes (e.g., [22, 23] -> b'\x16\x17')
-        # 'B' = unsigned char (1 byte per int)
+        # Binary packing
+        # Convert list of ints to bytes (e.g. [22, 23] -> b'\x16\x17')
         pack_format = f"{len(self.buffer)}B"
-        payload_bytes = struct.pack(pack_format, *self.buffer)
+        raw_payload = struct.pack(pack_format, *self.buffer)
+
+        # Encryption (AES-GCM)
+        secure_payload = encrypt_payload(raw_payload)
 
         is_aggregated = FLAG_AGGREGATED if len(self.buffer) > 1 else 0
         budget_byte = int(self.battery.current)
 
-        # Send raw bytes
-        packet = Packet.pack(self.seq, is_aggregated, budget_byte, payload_bytes)
+        # Create Packet
+        packet = Packet.pack(self.seq, is_aggregated, budget_byte, secure_payload)
 
         attempts = 0
         success = False
@@ -105,4 +107,4 @@ class SmartSender:
             csv.writer(f).writerow([time.time(), self.seq, self.battery.current, mode, status])
 
         self.seq += 1
-        self.buffer = []  # Clear buffer
+        self.buffer = []
