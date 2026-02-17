@@ -2,7 +2,6 @@ import asyncio
 import threading
 import time
 import os
-import struct
 from Sender import SmartSender
 from Receiver import EnergyProtocolReceiver
 import coap_competitor

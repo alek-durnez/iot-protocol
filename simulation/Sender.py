@@ -5,7 +5,7 @@ import csv
 import random
 import struct
 from utils import LISTEN_IP, LISTEN_PORT, Packet, FLAG_ACK, FLAG_AGGREGATED, simulate_network_loss, encrypt_payload
-from battery import Battery
+from simulation.battery import Battery
 
 LOG_FILE = "results/smart_sender_log.csv"
 os.makedirs("results", exist_ok=True)
